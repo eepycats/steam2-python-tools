@@ -27,7 +27,7 @@ def parse_steamtime64(b :bytes) -> datetime:
     u64_decoded = parse_u64(b)
     unix = (u64_decoded / 1000000) - 62135596800
     ms = u64_decoded % 1000000
-    return datetime.fromtimestamp(unix) + timedelta(milliseconds=ms)
+    return datetime.utcfromtimestamp(unix) + timedelta(microseconds=ms)
 
 #
 # custom steam stuff
