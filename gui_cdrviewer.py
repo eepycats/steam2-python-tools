@@ -7,7 +7,7 @@ from cdr import CDRBlob
 from gui_stuff.apprecord_view import AppRecordWindow
 from gui_stuff.info_view import InfoWindow
 from gui_stuff.subscription_view import SubscriptionRecordWindow
-
+from traceback import format_exc
 class MainWindow(QMainWindow):
     def __init__(self):
         self.blob = None
@@ -59,7 +59,7 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"Blob loaded, version {self.blob.VersionNumber}", 2000)
             return
         except Exception as e:
-            self.error_msgbox("Failed!", f"Exception: {e}")
+            self.error_msgbox("Failed!", f"Exception: {e} {format_exc()}")
             self.statusBar().showMessage(f"Failed to load the file!", 2000)
 
     def close_blob(self):

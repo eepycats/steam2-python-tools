@@ -3,13 +3,13 @@ from datetime import datetime, timedelta
 import struct, zlib, sys
 
 def u32(i : int) -> bytes:
-    return struct.pack("L", i)
+    return struct.pack("I", i)
 
 def parse_u16(i : bytes) -> int:
     return struct.unpack("H", i)[0]
 
 def parse_u32(i : bytes) -> int:
-    return struct.unpack("L", i)[0]
+    return struct.unpack("I", i)[0]
 
 def parse_cstr(i : bytes) -> str:
     return i[:-1].decode("latin-1") if i[-1] == 0 else i.decode("latin-1")
@@ -281,13 +281,13 @@ class IndexAppIdToSubscriptionIdsRecord(BaseMapParser):
         super().__init__(d)
 
     
-def blob_unserialize(blobtext : bytes) -> dict:
+def blob_unserialize(blobtext : bytes, **kwargs) -> dict:
     if blobtext[0:2] == b"\x01\x43":
         # print("decompress")
         blobtext = zlib.decompress(blobtext[20:])
 
     blobdict = {}
-    (totalsize, slack) = struct.unpack("<LL", blobtext[2:10])
+    (totalsize, slack) = struct.unpack("<II", blobtext[2:10])
 
     if slack:
         blobdict[b"__slack__"] = blobtext[-slack:]
@@ -296,13 +296,13 @@ def blob_unserialize(blobtext : bytes) -> dict:
     index = 10
     while index < totalsize:
         namestart = index + 6
-        (namesize, datasize) = struct.unpack("<HL", blobtext[index:namestart])
+        (namesize, datasize) = struct.unpack("<HI", blobtext[index:namestart])
         datastart = namestart + namesize
         name = blobtext[namestart:datastart]
         dataend = datastart + datasize
         data = blobtext[datastart:dataend]
-        if len(data) > 1 and data[0:2] == b"\x01\x50":
-            sub_blob = blob_unserialize(data)
+        if len(data) > 1 and data[0:2] == b"\x01\x50" and not ("parent" in kwargs and kwargs["parent"] == b"ContentDescriptionRecord"): # hack for old blobs
+            sub_blob = blob_unserialize(data, parent=name)
             blobdict[name] = sub_blob
         else:
             blobdict[name] = data
@@ -328,12 +328,9 @@ class CDRBlob(BaseParser):
         f = open(path, "rb")
         blob_bin = f.read()
         f.close()
-        
-        if blob_bin[0:2] == b"\x01\x43" :
-            blob_bin = zlib.decompress(blob_bin[20:])
-        #print(Blob.blob_unserialize(blob_bin), file=open("dump.txt", "w"))
         unserialized = blob_unserialize(blob_bin)
         if b'TopKey' in unserialized:
             return self(blob_unserialize(unserialized[b'TopKey'][u32(2)][b'ContentDescriptionRecord'][u32(2)]))
         return self(blob_unserialize(blob_bin))
+        
     
